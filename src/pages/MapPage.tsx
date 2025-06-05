@@ -22,7 +22,7 @@ const MapPage: React.FC = () => {
   const [selectedTime, setSelectedTime] = useState<Date>(new Date());
   const [route, setRoute] = useState<Route | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [center, setCenter] = useState<[number, number]>([20.5937, 78.9629]); // India center
+  const [center, setCenter] = useState<[number, number]>([12.9716, 77.5946]); // Bangalore center
   const [zoom, setZoom] = useState(5);
   const [activePOIs, setActivePOIs] = useState<{
     police: boolean;
@@ -47,17 +47,27 @@ const MapPage: React.FC = () => {
 
   const { showToast } = useToast();
 
-  // Set user's current location as initial center if available
+  // Get user's current location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           setCenter([latitude, longitude]);
-          setZoom(13);
+          setZoom(15); // Zoom in closer for better street-level view
         },
         (error) => {
           console.error("Error getting location:", error);
+          showToast({
+            title: 'Location Error',
+            message: 'Could not get your location. Using default city center.',
+            type: 'warning',
+          });
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
         }
       );
     }
