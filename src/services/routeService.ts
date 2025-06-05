@@ -16,46 +16,62 @@ export const fetchSafeRoute = async (
     [end[1], end[0]]
   ];
 
-  const response = await fetch(`${OPENROUTE_API}/directions/foot-walking`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': OPENROUTE_API_KEY
-    },
-    body: JSON.stringify({
-      coordinates,
-      instructions: true,
-      format: 'geojson',
-      preference: 'recommended',
-      units: 'meters'
-    })
-  });
+  try {
+    const response = await fetch(`${OPENROUTE_API}/directions/foot-walking`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': OPENROUTE_API_KEY
+      },
+      body: JSON.stringify({
+        coordinates,
+        instructions: true,
+        format: 'geojson',
+        preference: 'recommended',
+        units: 'meters'
+      })
+    });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to fetch route');
+    if (response.status === 429) {
+      throw new Error('Route service rate limit exceeded. Please try again in a few seconds.');
+    }
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || error.error || `Failed to fetch route: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.features || !data.features[0]) {
+      throw new Error('No route found between the specified locations');
+    }
+
+    const route = data.features[0];
+
+    // Convert coordinates from [longitude, latitude] to [latitude, longitude]
+    const convertedCoordinates = route.geometry.coordinates.map(
+      ([lng, lat]: number[]) => [lat, lng] as [number, number]
+    );
+
+    // Generate safety segments based on time of day and route sections
+    const segments = generateSafetySegments(convertedCoordinates, time);
+
+    return {
+      geometry: {
+        type: 'LineString',
+        coordinates: convertedCoordinates
+      },
+      distance: route.properties.segments[0].distance,
+      duration: route.properties.segments[0].duration,
+      segments
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Error fetching route: ${error.message}`);
+    }
+    throw new Error('An unexpected error occurred while fetching the route');
   }
-
-  const data = await response.json();
-  const route = data.features[0];
-
-  // Convert coordinates from [longitude, latitude] to [latitude, longitude]
-  const convertedCoordinates = route.geometry.coordinates.map(
-    ([lng, lat]: number[]) => [lat, lng] as [number, number]
-  );
-
-  // Generate safety segments based on time of day and route sections
-  const segments = generateSafetySegments(convertedCoordinates, time);
-
-  return {
-    geometry: {
-      type: 'LineString',
-      coordinates: convertedCoordinates
-    },
-    distance: route.properties.segments[0].distance,
-    duration: route.properties.segments[0].duration,
-    segments
-  };
 };
 
 function generateSafetySegments(

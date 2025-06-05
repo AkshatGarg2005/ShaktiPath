@@ -19,18 +19,36 @@ export const searchLocation = async (query: string): Promise<Location[]> => {
   url.searchParams.append('viewbox', viewbox);
   url.searchParams.append('dedupe', '1');
 
-  const response = await fetch(url.toString());
+  try {
+    const response = await fetch(url.toString());
+    
+    if (response.status === 429) {
+      throw new Error('Location search rate limit exceeded. Please try again in a few seconds.');
+    }
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to search location');
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || `Failed to search location: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    if (!Array.isArray(data)) {
+      if (data.error) {
+        throw new Error(`LocationIQ API error: ${data.error}`);
+      }
+      return [];
+    }
+
+    return data.map((item: any) => ({
+      name: item.display_name.split(',')[0],
+      description: item.display_name,
+      coordinates: [parseFloat(item.lat), parseFloat(item.lon)]
+    }));
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Error searching for location: ${error.message}`);
+    }
+    throw new Error('An unexpected error occurred while searching for location');
   }
-
-  const data = await response.json();
-
-  return data.map((item: any) => ({
-    name: item.display_name.split(',')[0],
-    description: item.display_name,
-    coordinates: [parseFloat(item.lat), parseFloat(item.lon)]
-  }));
 };
