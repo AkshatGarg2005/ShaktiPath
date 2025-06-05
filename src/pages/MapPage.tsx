@@ -12,8 +12,6 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { fetchSafeRoute } from '../services/routeService';
 import { fetchPOIs } from '../services/poiService';
 import type { Location, POICategory, Route, POI } from '../types';
-
-// Import the Leaflet icon fix
 import { defaultIcon } from '../utils/leafletIcons';
 
 const MapPage: React.FC = () => {
@@ -23,7 +21,7 @@ const MapPage: React.FC = () => {
   const [route, setRoute] = useState<Route | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [center, setCenter] = useState<[number, number]>([12.9716, 77.5946]); // Bangalore center
-  const [zoom, setZoom] = useState(5);
+  const [zoom, setZoom] = useState(12);
   const [activePOIs, setActivePOIs] = useState<{
     police: boolean;
     hospitals: boolean;
@@ -54,7 +52,7 @@ const MapPage: React.FC = () => {
         (position) => {
           const { latitude, longitude } = position.coords;
           setCenter([latitude, longitude]);
-          setZoom(15); // Zoom in closer for better street-level view
+          setZoom(15);
         },
         (error) => {
           console.error("Error getting location:", error);
@@ -312,106 +310,106 @@ const MapPage: React.FC = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
-      <div className="bg-white p-4 shadow-md z-10">
-        <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Source</label>
-              <LocationSearch 
-                placeholder="Enter starting point"
-                icon={<MapPin size={18} />}
-                onSelect={(location) => setSource(location)}
-                value={source?.name || ''}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Destination</label>
-              <LocationSearch 
-                placeholder="Enter destination"
-                icon={<Navigation size={18} />}
-                onSelect={(location) => setDestination(location)}
-                value={destination?.name || ''}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Time</label>
-              <div className="flex space-x-2">
-                <TimePicker 
-                  value={selectedTime}
-                  onChange={(date) => setSelectedTime(date)}
-                />
-                <button
-                  onClick={handleFindRoute}
-                  disabled={isLoading || !source || !destination}
-                  className="flex-shrink-0 bg-blue-700 hover:bg-blue-800 text-white py-2 px-4 rounded-lg flex items-center justify-center transition-colors disabled:bg-blue-300"
-                >
-                  {isLoading ? (
-                    <LoadingSpinner size="sm" />
-                  ) : (
-                    <>
-                      <Search size={18} className="mr-2" />
-                      Find Safe Route
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+      {/* Search Panel - Now positioned absolutely over the map */}
+      <div className="absolute top-4 left-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Source</label>
+            <LocationSearch 
+              placeholder="Enter starting point"
+              icon={<MapPin size={18} className="text-gray-400" />}
+              onSelect={(location) => setSource(location)}
+              value={source?.name || ''}
+            />
           </div>
           
-          <div className="mt-4 flex flex-wrap gap-3">
-            <button
-              onClick={() => handlePOIToggle('police')}
-              className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
-                activePOIs.police 
-                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                  : 'bg-gray-100 text-gray-700 border border-gray-200'
-              }`}
-            >
-              <Shield size={16} className="mr-1" />
-              Police Stations
-            </button>
-            
-            <button
-              onClick={() => handlePOIToggle('hospitals')}
-              className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
-                activePOIs.hospitals 
-                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                  : 'bg-gray-100 text-gray-700 border border-gray-200'
-              }`}
-            >
-              <Building size={16} className="mr-1" />
-              Hospitals
-            </button>
-            
-            <button
-              onClick={() => handlePOIToggle('liquorShops')}
-              className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
-                activePOIs.liquorShops 
-                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                  : 'bg-gray-100 text-gray-700 border border-gray-200'
-              }`}
-            >
-              <Wine size={16} className="mr-1" />
-              Liquor Shops
-            </button>
-            
-            <button
-              onClick={() => handlePOIToggle('crimeZones')}
-              className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
-                activePOIs.crimeZones 
-                  ? 'bg-blue-100 text-blue-800 border border-blue-300' 
-                  : 'bg-gray-100 text-gray-700 border border-gray-200'
-              }`}
-            >
-              <AlertTriangle size={16} className="mr-1" />
-              Crime Zones
-            </button>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Destination</label>
+            <LocationSearch 
+              placeholder="Enter destination"
+              icon={<Navigation size={18} className="text-gray-400" />}
+              onSelect={(location) => setDestination(location)}
+              value={destination?.name || ''}
+            />
           </div>
+          
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">Time</label>
+            <div className="flex space-x-2">
+              <TimePicker 
+                value={selectedTime}
+                onChange={(date) => setSelectedTime(date)}
+              />
+              <button
+                onClick={handleFindRoute}
+                disabled={isLoading || !source || !destination}
+                className="flex-shrink-0 bg-blue-700 hover:bg-blue-800 text-white py-2 px-4 rounded-lg flex items-center justify-center transition-colors disabled:bg-blue-300"
+              >
+                {isLoading ? (
+                  <LoadingSpinner size="sm" />
+                ) : (
+                  <>
+                    <Search size={18} className="mr-2" />
+                    Find Safe Route
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            onClick={() => handlePOIToggle('police')}
+            className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
+              activePOIs.police 
+                ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                : 'bg-gray-100 text-gray-700 border border-gray-200'
+            }`}
+          >
+            <Shield size={16} className="mr-1" />
+            Police Stations
+          </button>
+          
+          <button
+            onClick={() => handlePOIToggle('hospitals')}
+            className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
+              activePOIs.hospitals 
+                ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                : 'bg-gray-100 text-gray-700 border border-gray-200'
+            }`}
+          >
+            <Building size={16} className="mr-1" />
+            Hospitals
+          </button>
+          
+          <button
+            onClick={() => handlePOIToggle('liquorShops')}
+            className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
+              activePOIs.liquorShops 
+                ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                : 'bg-gray-100 text-gray-700 border border-gray-200'
+            }`}
+          >
+            <Wine size={16} className="mr-1" />
+            Liquor Shops
+          </button>
+          
+          <button
+            onClick={() => handlePOIToggle('crimeZones')}
+            className={`flex items-center px-3 py-1.5 rounded-full text-sm ${
+              activePOIs.crimeZones 
+                ? 'bg-blue-100 text-blue-800 border border-blue-300' 
+                : 'bg-gray-100 text-gray-700 border border-gray-200'
+            }`}
+          >
+            <AlertTriangle size={16} className="mr-1" />
+            Crime Zones
+          </button>
         </div>
       </div>
       
+      {/* Map Container */}
       <div className="flex-grow relative">
         <MapContainer 
           center={center} 
