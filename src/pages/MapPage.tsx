@@ -45,7 +45,7 @@ const MapPage: React.FC = () => {
 
   const { showToast } = useToast();
 
-  // Get user's current location
+  // Get user's location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -77,10 +77,9 @@ const MapPage: React.FC = () => {
       if (!source) return;
       
       try {
-        // Calculate bounding box around the source (or route if available)
         const bbox = route 
           ? getBoundingBox(route.geometry.coordinates) 
-          : getBoundingBoxFromPoint(source.coordinates, 2); // 2km radius
+          : getBoundingBoxFromPoint(source.coordinates, 2);
         
         if (activePOIs.police && pois.police.length === 0) {
           const policeStations = await fetchPOIs('police', bbox);
@@ -130,10 +129,8 @@ const MapPage: React.FC = () => {
       
       setRoute(safeRoute);
       
-      // Adjust map to show the entire route
       if (safeRoute && safeRoute.geometry.coordinates.length > 0) {
         const bbox = getBoundingBox(safeRoute.geometry.coordinates);
-        // Map component will handle zooming to bounds
       }
       
     } catch (error) {
@@ -155,7 +152,6 @@ const MapPage: React.FC = () => {
     }));
   };
 
-  // Helper function to get bounding box from route coordinates
   const getBoundingBox = (coordinates: [number, number][]): [[number, number], [number, number]] => {
     if (!coordinates.length) return [[0, 0], [0, 0]];
     
@@ -171,7 +167,6 @@ const MapPage: React.FC = () => {
       maxLng = Math.max(maxLng, lng);
     });
     
-    // Add a small buffer
     const latBuffer = (maxLat - minLat) * 0.1;
     const lngBuffer = (maxLng - minLng) * 0.1;
     
@@ -181,12 +176,10 @@ const MapPage: React.FC = () => {
     ];
   };
   
-  // Helper function to get bounding box from a point and radius in km
   const getBoundingBoxFromPoint = (
     [lat, lng]: [number, number], 
     radiusKm: number
   ): [[number, number], [number, number]] => {
-    // Rough approximation: 1 degree = 111km
     const latDelta = radiusKm / 111;
     const lngDelta = radiusKm / (111 * Math.cos((lat * Math.PI) / 180));
     
@@ -196,7 +189,6 @@ const MapPage: React.FC = () => {
     ];
   };
 
-  // Component to auto fit map to bounds when route changes
   const MapBoundsUpdater = ({ route }: { route: Route | null }) => {
     const map = useMap();
     
@@ -216,7 +208,6 @@ const MapPage: React.FC = () => {
   const renderMarkers = () => {
     const markers = [];
     
-    // Source marker
     if (source) {
       markers.push(
         <Marker 
@@ -233,7 +224,6 @@ const MapPage: React.FC = () => {
       );
     }
     
-    // Destination marker
     if (destination) {
       markers.push(
         <Marker 
@@ -250,7 +240,6 @@ const MapPage: React.FC = () => {
       );
     }
     
-    // POI markers
     if (activePOIs.police) {
       pois.police.forEach((poi, index) => {
         markers.push(
@@ -309,10 +298,10 @@ const MapPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]">
-      {/* Search Panel - Now positioned absolutely over the map */}
-      <div className="absolute top-4 left-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="h-[calc(100vh-64px)] pt-16 relative">
+      {/* Search Panel */}
+      <div className="absolute top-20 left-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-4 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4">
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">Source</label>
             <LocationSearch 
@@ -343,7 +332,7 @@ const MapPage: React.FC = () => {
               <button
                 onClick={handleFindRoute}
                 disabled={isLoading || !source || !destination}
-                className="flex-shrink-0 bg-blue-700 hover:bg-blue-800 text-white py-2 px-4 rounded-lg flex items-center justify-center transition-colors disabled:bg-blue-300"
+                className="whitespace-nowrap flex-shrink-0 bg-blue-700 hover:bg-blue-800 text-white py-2 px-4 rounded-lg flex items-center justify-center transition-colors disabled:bg-blue-300"
               >
                 {isLoading ? (
                   <LoadingSpinner size="sm" />
@@ -410,7 +399,7 @@ const MapPage: React.FC = () => {
       </div>
       
       {/* Map Container */}
-      <div className="flex-grow relative">
+      <div className="h-full">
         <MapContainer 
           center={center} 
           zoom={zoom} 
