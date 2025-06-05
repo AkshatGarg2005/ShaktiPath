@@ -6,148 +6,138 @@ export const fetchSafeRoute = async (
   end: [number, number],
   time: Date
 ): Promise<Route> => {
-  // For demo purposes, mock the API call
+  // For demo purposes, mock the API call with more realistic road routes
   console.log('Fetching route from', start, 'to', end, 'at', time);
   
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 1500));
   
-  // Generate a mock route with safety segments
+  // Generate waypoints to simulate road routes
+  const waypoints = generateRoadWaypoints(start, end);
+  
+  // Generate a mock route with safety segments using the waypoints
   const mockRoute: Route = {
     geometry: {
       type: 'LineString',
-      coordinates: generateRouteCoordinates(start, end, 20)
+      coordinates: waypoints
     },
-    distance: Math.random() * 5000, // Random distance in meters
-    duration: Math.random() * 3600, // Random duration in seconds
-    segments: generateSafetySegments(start, end)
+    distance: calculateRouteDistance(waypoints), // Distance in meters
+    duration: Math.floor(calculateRouteDistance(waypoints) / 1.4), // Duration in seconds (assuming 1.4 m/s walking speed)
+    segments: generateSafetySegments(waypoints)
   };
   
   return mockRoute;
-  
-  /* In a real implementation:
-  // First, get the route from OpenRouteService
-  const openRouteUrl = `https://api.openrouteservice.org/v2/directions/foot-walking`;
-  
-  const response = await fetch(openRouteUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': OPENROUTE_API_KEY
-    },
-    body: JSON.stringify({
-      coordinates: [
-        [start[1], start[0]], // Note: OpenRouteService uses [lon, lat] format
-        [end[1], end[0]]
-      ],
-      format: 'geojson'
-    })
-  });
-  
-  if (!response.ok) {
-    throw new Error('Failed to fetch route from OpenRouteService');
-  }
-  
-  const routeData = await response.json();
-  
-  // Now, send the route to our backend to get safety scores
-  const safetyResponse = await fetch(`${API_URL}/routes/safety`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      route: routeData.features[0].geometry,
-      time: time.toISOString()
-    }),
-    credentials: 'include'
-  });
-  
-  if (!safetyResponse.ok) {
-    throw new Error('Failed to get safety information');
-  }
-  
-  return await safetyResponse.json();
-  */
 };
 
-// Helper function to generate coordinates between two points
-function generateRouteCoordinates(
+// Helper function to generate waypoints that follow a road-like pattern
+function generateRoadWaypoints(
   start: [number, number],
-  end: [number, number],
-  numPoints: number
+  end: [number, number]
 ): [number, number][] {
-  const coordinates: [number, number][] = [start];
+  const waypoints: [number, number][] = [start];
+  
+  // Calculate the main direction
+  const deltaLat = end[0] - start[0];
+  const deltaLng = end[1] - start[1];
+  
+  // Generate intermediate points with slight variations to simulate roads
+  const numPoints = Math.floor(Math.random() * 5) + 8; // 8-12 points
+  
+  let currentLat = start[0];
+  let currentLng = start[1];
   
   for (let i = 1; i < numPoints - 1; i++) {
     const ratio = i / (numPoints - 1);
     
-    // Add some randomness to make the route look natural
-    const jitterLat = (Math.random() - 0.5) * 0.005;
-    const jitterLng = (Math.random() - 0.5) * 0.005;
+    // Add some randomness to make it look like roads
+    // Smaller jitter values for more realistic road-like paths
+    const jitterLat = (Math.random() - 0.5) * 0.001;
+    const jitterLng = (Math.random() - 0.5) * 0.001;
     
-    const lat = start[0] + ratio * (end[0] - start[0]) + jitterLat;
-    const lng = start[1] + ratio * (end[1] - start[1]) + jitterLng;
-    
-    coordinates.push([lat, lng]);
-  }
-  
-  coordinates.push(end);
-  return coordinates;
-}
-
-// Helper function to generate safety segments
-function generateSafetySegments(
-  start: [number, number],
-  end: [number, number]
-) {
-  // Create 3-5 segments with different safety levels
-  const numSegments = Math.floor(Math.random() * 3) + 3;
-  const safetyColors = ['green', 'yellow', 'red'];
-  const segments = [];
-  
-  for (let i = 0; i < numSegments; i++) {
-    const startRatio = i / numSegments;
-    const endRatio = (i + 1) / numSegments;
-    
-    const segmentStart: [number, number] = [
-      start[0] + startRatio * (end[0] - start[0]),
-      start[1] + startRatio * (end[1] - start[1])
-    ];
-    
-    const segmentEnd: [number, number] = [
-      start[0] + endRatio * (end[0] - start[0]),
-      start[1] + endRatio * (end[1] - start[1])
-    ];
-    
-    // Generate some points between segment start and end
-    const numPoints = Math.floor(Math.random() * 5) + 3;
-    const coordinates = generateRouteCoordinates(segmentStart, segmentEnd, numPoints);
-    
-    // Randomly select a safety color, but make sure we have some variety
-    let safetyColor;
-    if (i === 0) {
-      // First segment is random
-      safetyColor = safetyColors[Math.floor(Math.random() * safetyColors.length)];
+    // Sometimes make 90-degree turns to simulate block navigation
+    if (Math.random() < 0.3) {
+      if (Math.random() < 0.5) {
+        currentLat = start[0] + ratio * deltaLat + jitterLat;
+        currentLng = currentLng + jitterLng;
+      } else {
+        currentLat = currentLat + jitterLat;
+        currentLng = start[1] + ratio * deltaLng + jitterLng;
+      }
     } else {
-      // Subsequent segments should try to be different from previous
-      const prevColor = segments[i - 1].safetyColor;
-      const availableColors = safetyColors.filter(color => color !== prevColor);
-      safetyColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+      currentLat = start[0] + ratio * deltaLat + jitterLat;
+      currentLng = start[1] + ratio * deltaLng + jitterLng;
     }
     
-    // Generate random incident count based on safety color
+    waypoints.push([currentLat, currentLng]);
+  }
+  
+  waypoints.push(end);
+  return waypoints;
+}
+
+// Helper function to calculate route distance in meters
+function calculateRouteDistance(waypoints: [number, number][]): number {
+  let distance = 0;
+  for (let i = 1; i < waypoints.length; i++) {
+    distance += getDistanceFromLatLonInMeters(
+      waypoints[i-1][0],
+      waypoints[i-1][1],
+      waypoints[i][0],
+      waypoints[i][1]
+    );
+  }
+  return distance;
+}
+
+// Helper function to calculate distance between two points in meters
+function getDistanceFromLatLonInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+          Math.cos(φ1) * Math.cos(φ2) *
+          Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c;
+}
+
+// Helper function to generate safety segments using waypoints
+function generateSafetySegments(waypoints: [number, number][]) {
+  const segments = [];
+  const numSegments = Math.min(waypoints.length - 1, Math.floor(Math.random() * 3) + 3);
+  const pointsPerSegment = Math.floor(waypoints.length / numSegments);
+  
+  for (let i = 0; i < numSegments; i++) {
+    const start = i * pointsPerSegment;
+    const end = i === numSegments - 1 ? waypoints.length : (i + 1) * pointsPerSegment;
+    
+    const segmentPoints = waypoints.slice(start, end);
+    
+    // Determine safety color based on various factors
+    let safetyColor;
+    const timeOfDay = new Date().getHours();
+    const isNightTime = timeOfDay < 6 || timeOfDay > 18;
+    
+    if (isNightTime) {
+      safetyColor = Math.random() < 0.6 ? 'red' : 'yellow';
+    } else {
+      safetyColor = Math.random() < 0.7 ? 'green' : 'yellow';
+    }
+    
+    // Generate incidents based on safety color
     let incidents = 0;
     if (safetyColor === 'red') {
-      incidents = Math.floor(Math.random() * 10) + 8; // 8-17
+      incidents = Math.floor(Math.random() * 5) + 3; // 3-7 incidents
     } else if (safetyColor === 'yellow') {
-      incidents = Math.floor(Math.random() * 7) + 1; // 1-7
-    } else {
-      incidents = Math.floor(Math.random() * 1); // 0-1
+      incidents = Math.floor(Math.random() * 2) + 1; // 1-2 incidents
     }
     
     segments.push({
-      coordinates,
+      coordinates: segmentPoints,
       safetyColor,
       incidents
     });
