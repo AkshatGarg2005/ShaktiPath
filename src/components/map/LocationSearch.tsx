@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { searchLocation } from '../../services/geocodingService';
+import { useDebounce } from '../../utils/apiUtils';
 import type { Location } from '../../types';
 
 interface LocationSearchProps {
@@ -24,28 +25,38 @@ const LocationSearch: React.FC<LocationSearchProps> = ({
   // Use the passed-in value if available, otherwise use the internal input value
   const displayValue = value || inputValue;
   
-  const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Debounce the search term
+  const debouncedSearchTerm = useDebounce(inputValue, 300);
+  
+  // Effect for API call
+  useEffect(() => {
+    const searchLocations = async () => {
+      if (debouncedSearchTerm.length < 3) {
+        setResults([]);
+        setShowResults(false);
+        return;
+      }
+      
+      setIsSearching(true);
+      setShowResults(true);
+      
+      try {
+        const locations = await searchLocation(debouncedSearchTerm);
+        setResults(locations);
+      } catch (error: any) {
+        console.error("Error searching for location:", error);
+        setResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+    
+    searchLocations();
+  }, [debouncedSearchTerm]);
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setInputValue(query);
-    
-    if (query.length < 3) {
-      setResults([]);
-      setShowResults(false);
-      return;
-    }
-    
-    setIsSearching(true);
-    setShowResults(true);
-    
-    try {
-      const locations = await searchLocation(query);
-      setResults(locations);
-    } catch (error) {
-      console.error("Error searching for location:", error);
-      setResults([]);
-    } finally {
-      setIsSearching(false);
-    }
   };
   
   const handleSelectLocation = (location: Location) => {
