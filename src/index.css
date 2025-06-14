@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet map styles */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  font-family: inherit;
+}
+
+/* Mobile-specific map optimizations */
+@media (max-width: 768px) {
+  .leaflet-container {
+    min-height: 100% !important;
+    height: 100% !important;
+    width: 100% !important;
+    position: relative !important;
+  }
+  
+  /* Ensure map tiles load properly on mobile */
+  .leaflet-tile-container {
+    transform: translate3d(0, 0, 0);
+  }
+  
+  /* Optimize touch interactions */
+  .leaflet-control-container {
+    pointer-events: auto;
+  }
+  
+  /* Improve marker visibility on mobile */
+  .leaflet-marker-icon {
+    transform: translate3d(0, 0, 0);
+  }
+  
+  /* Fix popup positioning on mobile */
+  .leaflet-popup {
+    margin-bottom: 20px;
+  }
+  
+  /* Adjust zoom controls for mobile */
+  .leaflet-control-zoom {
+    margin-top: 10px;
+    margin-right: 10px;
+  }
+  
+  /* Make zoom buttons larger for touch */
+  .leaflet-control-zoom a {
+    width: 40px;
+    height: 40px;
+    line-height: 40px;
+    font-size: 18px;
+  }
+}
+
+/* Force hardware acceleration for better mobile performance */
+.leaflet-map-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+}
+
+/* Ensure proper z-index for mobile overlays */
+.leaflet-control-zoom {
+  z-index: 1000;
+}
+
+.leaflet-popup-pane {
+  z-index: 1100;
+}
+
+/* Custom marker styles */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Mobile viewport fixes */
+@supports (-webkit-touch-callout: none) {
+  .leaflet-container {
+    -webkit-transform: translate3d(0, 0, 0);
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Ensure mobile layout doesn't have horizontal scroll */
+@media (max-width: 768px) {
+  body {
+    overflow-x: hidden;
+  }
+  
+  .leaflet-container {
+    touch-action: pan-x pan-y;
+  }
+}
+
+/* Mobile-specific adjustments for better UX */
+@media (max-width: 768px) {
+  /* Make touch targets larger */
+  button {
+    min-height: 44px;
+  }
+  
+  /* Improve input field touch targets */
+  input[type="text"], input[type="email"], input[type="tel"] {
+    min-height: 44px;
+  }
+  
+  /* Prevent zoom on input focus */
+  input[type="text"], 
+  input[type="email"], 
+  input[type="tel"], 
+  textarea, 
+  select {
+    font-size: 16px;
+  }
+}
+
+/* Fix for mobile map container height */
+@media (max-width: 768px) {
+  .mobile-map-container {
+    height: calc(100vh - 64px - 60px) !important; /* Full height minus navbar and bottom panel */
+    min-height: 400px !important;
+  }
+  
+  .mobile-map-container .leaflet-container {
+    height: 100% !important;
+    width: 100% !important;
+  }
+}
+
+/* Ensure proper mobile layout structure */
+@media (max-width: 768px) {
+  .mobile-layout {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  
+  .mobile-navbar {
+    flex-shrink: 0;
+    height: 64px;
+  }
+  
+  .mobile-map-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .mobile-bottom-panel {
+    flex-shrink: 0;
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+}
