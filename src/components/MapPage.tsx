@@ -453,81 +453,65 @@ function MapPage() {
   };
 
   const sendSOSAlert = async () => {
-    if (!currentLocation || !user) {
-      setSosError('Location or user not available');
-      return;
+  if (!currentLocation || !user) {
+    setSosError('Location or user not available');
+    return;
+  }
+
+  setIsSendingSOS(true);
+  setSosError(null);
+
+  try {
+    console.log('🚨 Sending SOS alert…');
+
+    // ── 1. Reverse-geocode current location ──────────────────────────────
+    const currentAddress = await mapService.reverseGeocode(currentLocation);
+
+    // ── 2. Persist alert (non-blocking) ──────────────────────────────────
+    try {
+      const { error } = await supabase
+        .from('emergency_alerts')
+        .insert([
+          {
+            user_id: user.id,
+            lat: currentLocation.lat,
+            lng: currentLocation.lng,
+            address: currentAddress,
+            alert_type: 'sos',
+            status: 'active',
+          },
+        ]);
+      if (error) console.error('Error saving emergency alert:', error);
+      else console.log('✅ Emergency alert saved to database');
+    } catch (dbError) {
+      console.error('Database error (non-blocking):', dbError);
     }
 
-    setIsSendingSOS(true);
-    setSosError(null);
+    // ── 3. Normalise emergency number (India default) ────────────────────
+    let emergencyNumber = user.emergency_contact;
+    if (emergencyNumber) {
+      emergencyNumber = emergencyNumber.replace(/\D/g, '');
+      if (emergencyNumber.length === 10) emergencyNumber = '91' + emergencyNumber;
+      else if (emergencyNumber.startsWith('+91')) emergencyNumber = emergencyNumber.substring(1);
+    }
 
-    try {
-      console.log('🚨 Sending SOS alert...');
-      
-      // Get current address
-      const currentAddress = await mapService.reverseGeocode(currentLocation);
-      
-      // Save emergency alert to database (silently)
-      try {
-        const { error } = await supabase
-          .from('emergency_alerts')
-          .insert([
-            {
-              user_id: user.id,
-              lat: currentLocation.lat,
-              lng: currentLocation.lng,
-              address: currentAddress,
-              alert_type: 'sos',
-              status: 'active'
-            }
-          ]);
+    // ── 4. Construct WhatsApp message ────────────────────────────────────
+    const now = new Date();
+    const indianTime = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    }).format(now);
 
-        if (error) {
-          console.error('Error saving emergency alert:', error);
-        } else {
-          console.log('✅ Emergency alert saved to database');
-        }
-      } catch (dbError) {
-        console.error('Database error (non-blocking):', dbError);
-      }
+    const locationString = `${currentLocation.lat},${currentLocation.lng}`;
+    const googleMapsLink = `https://maps.google.com/?q=${locationString}`;
 
-      // Clean emergency contact number
-      let emergencyNumber = user.emergency_contact;
-      if (emergencyNumber) {
-        // Remove all non-digits
-        emergencyNumber = emergencyNumber.replace(/\D/g, '');
-        
-        // Add +91 if it's a 10-digit Indian number
-        if (emergencyNumber.length === 10) {
-          emergencyNumber = '91' + emergencyNumber;
-        }
-        // Remove +91 if already present and re-add
-        else if (emergencyNumber.startsWith('91') && emergencyNumber.length === 12) {
-          // Already formatted correctly
-        }
-        // If it starts with +91, remove the + 
-        else if (emergencyNumber.startsWith('+91')) {
-          emergencyNumber = emergencyNumber.substring(1);
-        }
-      }
-
-      // Create emergency message with Indian time
-      const now = new Date();
-      const indianTime = new Intl.DateTimeFormat('en-IN', {
-        timeZone: 'Asia/Kolkata',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      }).format(now);
-
-      const locationString = `${currentLocation.lat},${currentLocation.lng}`;
-      const googleMapsLink = `https://maps.google.com/?q=${locationString}`;
-      
-      const message = `🚨 EMERGENCY ALERT from ${user.full_name}
+    const message = `🚨 EMERGENCY ALERT from ${user.full_name}
 
 📍 Location: ${currentAddress}
 
@@ -540,38 +524,25 @@ function MapPage() {
 
 Sent via ShaktiPath Safety App`;
 
-      console.log('📱 Opening WhatsApp with emergency message...');
-      
-      // Create WhatsApp URL
-      const whatsappUrl = `https://wa.me/${emergencyNumber}?text=${encodeURIComponent(message)}`;
-      
-      console.log('🔗 WhatsApp URL:', whatsappUrl);
-      
-      // Try to open WhatsApp
-      try {
-        // First try opening in a new window/tab
-        const whatsappWindow = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-        
-        // If popup was blocked, try direct navigation
-        if (!whatsappWindow || whatsappWindow.closed || typeof whatsappWindow.closed === 'undefined') {
-          console.log('🔄 Popup blocked, trying direct navigation...');
-          window.location.href = whatsappUrl;
-        } else {
-          console.log('✅ WhatsApp opened in new window');
-        }
-      } catch (error) {
-        console.error('❌ Error opening WhatsApp:', error);
-        // Fallback: try direct navigation
-        window.location.href = whatsappUrl;
-      }
-      
-    } catch (error: any) {
-      console.error('❌ Error sending SOS alert:', error);
-      setSosError('Failed to send emergency alert. Please contact your emergency contact directly.');
-    } finally {
-      setIsSendingSOS(false);
+    // ── 5. Attempt to open WhatsApp in a new tab ─────────────────────────
+    const whatsappUrl = `https://wa.me/${emergencyNumber}?text=${encodeURIComponent(message)}`;
+    console.log('📱 Opening WhatsApp:', whatsappUrl);
+
+    const popup = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+
+    // If popup is blocked the function simply ends; no UI messages
+    if (popup && !popup.closed) {
+      console.log('✅ WhatsApp opened in new tab/window');
+    } else {
+      console.warn('⚠️ Pop-up blocked by the browser (silent fallback)');
     }
-  };
+  } catch (err) {
+    console.error('❌ Error sending SOS alert:', err);
+    setSosError('Failed to send emergency alert. Please contact your emergency contact directly.');
+  } finally {
+    setIsSendingSOS(false);
+  }
+};
 
   if (isLoadingLocation) {
     return (
