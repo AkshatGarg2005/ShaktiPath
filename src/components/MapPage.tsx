@@ -527,15 +527,9 @@ Sent via ShaktiPath Safety App`;
     // ── 5. Attempt to open WhatsApp in a new tab ─────────────────────────
     const whatsappUrl = `https://wa.me/${emergencyNumber}?text=${encodeURIComponent(message)}`;
     console.log('📱 Opening WhatsApp:', whatsappUrl);
+    // Opening in the same tab ensures the user can navigate back
+    window.location.href = whatsappUrl;
 
-    const popup = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-
-    // If popup is blocked the function simply ends; no UI messages
-    if (popup && !popup.closed) {
-      console.log('✅ WhatsApp opened in new tab/window');
-    } else {
-      console.warn('⚠️ Pop-up blocked by the browser (silent fallback)');
-    }
   } catch (err) {
     console.error('❌ Error sending SOS alert:', err);
     setSosError('Failed to send emergency alert. Please contact your emergency contact directly.');
